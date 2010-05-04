@@ -268,7 +268,7 @@ class iCalendar_component {
             }
             else {
                 // If there's no semicolon, the remainder of the line is the label.
-                $label = $line;
+                $label = $name_and_parameters;
             }
 
             unset($fields);
