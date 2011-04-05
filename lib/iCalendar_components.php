@@ -242,36 +242,19 @@ class iCalendar_component {
         $this->clear_errors();
         foreach ($lines as $key => $line) {
             // Divide the line up into label, parameters and data fields.
-
-            $separator_index = strpos($line, RFC2445_VALUE_SEPARATOR);
-            
-            if($separator_index === false) { // Check that there's a colon in the line, otherwise it's invalid.
+            if (!preg_match('#^(?P<label>[-[:alnum:]]+)(?P<params>(?:;(?:(?:[-[:alnum:]]+)=(?:[^[:cntrl:]";:,]+|"[^[:cntrl:]"]+")))*):(?P<data>.*)$#', $line, $match)) {
                 $this->parser_error('Invalid line: '.$key.', ignoring');
                 continue;
             }
 
-            $name_and_parameters = substr($line, 0, $separator_index);
-            $data = substr($line, $separator_index + 1);
-
+            // parse parameters
             $params = array();
-            if (strpos($name_and_parameters, RFC2445_PARAMETER_SEPARATOR)) {
-                $fields = explode(RFC2445_PARAMETER_SEPARATOR, $name_and_parameters);
-                $label = array_shift($fields); // Everything before the first ; is the label.
-
-                if(count($fields) > 0) {                    
-                    foreach($fields as $field) { // Divide every parameter into a key => value pair and store them in an array
-                        list($parameter_name, $parameter_value) = explode('=', $field, 2);
-                        $params[$parameter_name] = $parameter_value;
-                    }
-                }
-                
-            }
-            else {
-                // If there's no semicolon, the remainder of the line is the label.
-                $label = $name_and_parameters;
-            }
-
-            unset($fields);
+            if (preg_match_all('#;(?P<param>[-[:alnum:]]+)=(?P<value>[^[:cntrl:]";:,]+|"[^[:cntrl:]"]+")#', $match['params'], $pmatch)) {
+                $params = array_combine($pmatch['param'], $pmatch['value']);
+            } 
+            $label = $match['label'];
+            $data  = $match['data'];
+            unset($match, $pmatch);
 
             if ($label == 'BEGIN') {
                 // This is the start of a component.
@@ -304,7 +287,7 @@ class iCalendar_component {
                     $parent_component = $this; // If there's no components on the stack, use the iCalendar object
                 }
                 if ($parent_component->add_component($component) === false) {
-                    $this->parser_error('Failed to add component on line '.$key);
+                    $this->parser_error("Failed to add component '{$component->name}' on line $key");
                 }
                 if ($parent_component != $this) { // If we're not using the iCalendar
                         array_push($components, $parent_component); // Put the component back on the stack
@@ -318,7 +301,7 @@ class iCalendar_component {
                 }
 
                 if ($component->add_property($label, $data, $params) === false) {
-                    $this->parser_error('Failed to add property on line '.$key);
+                    $this->parser_error("Failed to add property '$label' on line $key");
                 }
 
                 if($component != $this) { // If we're not using the iCalendar
@@ -713,4 +696,3 @@ class iCalendar_daylight extends iCalendar_standard {
 // REMINDER: DTEND must be later than DTSTART for all components which support both
 // REMINDER: DUE must be later than DTSTART for all components which support both
 
-?>
