@@ -744,6 +744,7 @@ function rfc2445_is_valid_value($value, $type) {
                 return false;
             }
 
+            $s = 0;
             if(strlen($value) == 7) {
                 $s = intval(substr($value, 5, 2));
                 $value = substr($value, 0, 5);
