@@ -54,9 +54,9 @@ class iCalendar_parameter {
                 return rfc2445_is_valid_value($value, RFC2445_TYPE_CAL_ADDRESS);
             break;
 
-            // These are textual parameters, so the MUST NOT contain double quotes
+            // RFC-2445: CN value may contain quotes.
             case 'CN':
-                return (strpos($value, '"') === false);
+                return rfc2445_is_valid_value($value, RFC2445_TYPE_TEXT);
             break;
 
             // These have enumerated legal values
