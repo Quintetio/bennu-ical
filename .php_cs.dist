@@ -1,0 +1,42 @@
+<?php
+
+// Documentation: https://mlocati.github.io/php-cs-fixer-configurator/#version:2.16
+// https://github.com/FriendsOfPHP/PHP-CS-Fixer
+
+$finder = PhpCsFixer\Finder::create()
+        ->in('lib')
+        /* ->exclude('bennu')
+        ->exclude('composer')
+        ->exclude('document_generator')
+        ->exclude('model/map')
+        ->exclude('model/om')
+        ->exclude('model_factset/map')
+        ->exclude('model_factset/om')
+        ->in('lib')*/ ;
+
+return PhpCsFixer\Config::create()
+        // ->setLineEnding(DIRECTORY_SEPARATOR == "\\" ? "\n" : "\n")
+        ->setRules([
+            // '@PhpCsFixer' => true,
+                '@Symfony' => true,
+                'array_syntax' => ['syntax' => 'short'],
+                'concat_space' => ['spacing' => 'one'],
+                'single_quote' => false,
+                'phpdoc_align' => false,
+                'full_opening_tag' => false,
+                'increment_style' => false,
+                'line_ending' => false,
+                'cast_spaces' => [
+                        'space' => 'none',
+                ],
+                'braces' => [
+                        'allow_single_line_closure' => false,
+                        'position_after_functions_and_oop_constructs' => 'same',
+                    // 'position_after_anonymous_constructs' => 'same',
+                    // 'position_after_control_structures' => 'same',
+                ],
+                'no_superfluous_phpdoc_tags' => false,
+                'yoda_style' => null,
+                'semicolon_after_instruction' => false,
+        ])
+        ->setFinder($finder);
