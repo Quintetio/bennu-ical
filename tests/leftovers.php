@@ -6,6 +6,3 @@ if(unfold(fold($test)) === $test) {
     echo 'pass!';
 }
 */
-
-
-?>

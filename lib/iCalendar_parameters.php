@@ -1,4 +1,6 @@
-<?php // $Id: iCalendar_parameters.php,v 1.8 2006/01/13 14:10:43 defacer Exp $
+<?php
+
+// $Id: iCalendar_parameters.php,v 1.8 2006/01/13 14:10:43 defacer Exp $
 
 /**
  *  BENNU - PHP iCalendar library
@@ -8,14 +10,15 @@
  *
  *  See http://bennu.sourceforge.net/ for more information and downloads.
  *
- * @author Ioannis Papaioannou 
+ * @author Ioannis Papaioannou
+ *
  * @version $Id: iCalendar_parameters.php,v 1.8 2006/01/13 14:10:43 defacer Exp $
+ *
  * @license http://www.gnu.org/copyleft/lesser.html GNU Lesser General Public License
  */
-
 class iCalendar_parameter {
-    function multiple_values_allowed($parameter) {
-        switch($parameter) {
+    public function multiple_values_allowed($parameter) {
+        switch ($parameter) {
             case 'DELEGATED-FROM':
             case 'DELEGATED-TO':
             case 'MEMBER':
@@ -25,8 +28,8 @@ class iCalendar_parameter {
         }
     }
 
-    function default_value($parameter) {
-        switch($parameter) {
+    public function default_value($parameter) {
+        switch ($parameter) {
             case 'CUTYPE':   return 'INDIVIDUAL';
             case 'FBTYPE':   return 'BUSY';
             case 'PARTSTAT': return 'NEEDS-ACTION';
@@ -34,12 +37,12 @@ class iCalendar_parameter {
             case 'RELTYPE':  return 'PARENT';
             case 'ROLE':     return 'REQ-PARTICIPANT';
             case 'RSVP':     return 'FALSE';
-            default:         return NULL;
+            default:         return null;
         }
     }
 
-    function is_valid_value(&$parent_property, $parameter, $value) {
-        switch($parameter) {
+    public function is_valid_value(&$parent_property, $parameter, $value) {
+        switch ($parameter) {
             // These must all be a URI
             case 'ALTREP':
             case 'DIR':
@@ -62,28 +65,31 @@ class iCalendar_parameter {
             // These have enumerated legal values
             case 'CUTYPE':
                 $value = strtoupper($value);
-                return ($value == 'INDIVIDUAL' || $value == 'GROUP' || $value == 'RESOURCE' || $value == 'ROOM' || $value == 'UNKNOWN' || rfc2445_is_xname($value));
+
+                return $value == 'INDIVIDUAL' || $value == 'GROUP' || $value == 'RESOURCE' || $value == 'ROOM' || $value == 'UNKNOWN' || rfc2445_is_xname($value);
             break;
 
             case 'ENCODING':
                 $value = strtoupper($value);
-                return ($value == '8BIT' || $value == 'BASE64' || rfc2445_is_xname($value));
+
+                return $value == '8BIT' || $value == 'BASE64' || rfc2445_is_xname($value);
             break;
 
             case 'FBTYPE':
                 $value = strtoupper($value);
-                return ($value == 'FREE' || $value == 'BUSY' || $value == 'BUSY-UNAVAILABLE' || $value == 'BUSY-TENTATIVE' || rfc2445_is_xname($value));
+
+                return $value == 'FREE' || $value == 'BUSY' || $value == 'BUSY-UNAVAILABLE' || $value == 'BUSY-TENTATIVE' || rfc2445_is_xname($value);
             break;
 
             case 'FMTTYPE':
-                $fmttypes = array(
-                        'TEXT'        => array('PLAIN', 'RICHTEXT', 'ENRICHED', 'TAB-SEPARATED-VALUES', 'HTML', 'SGML',
-                                               'VND.LATEX-Z', 'VND.FMI.FLEXSTOR'),
-                        'MULTIPART'   => array('MIXED', 'ALTERNATIVE', 'DIGEST', 'PARALLEL', 'APPLEDOUBLE', 'HEADER-SET',
+                $fmttypes = [
+                        'TEXT' => ['PLAIN', 'RICHTEXT', 'ENRICHED', 'TAB-SEPARATED-VALUES', 'HTML', 'SGML',
+                                               'VND.LATEX-Z', 'VND.FMI.FLEXSTOR', ],
+                        'MULTIPART' => ['MIXED', 'ALTERNATIVE', 'DIGEST', 'PARALLEL', 'APPLEDOUBLE', 'HEADER-SET',
                                                'FORM-DATA', 'RELATED', 'REPORT', 'VOICE-MESSAGE', 'SIGNED', 'ENCRYPTED',
-                                               'BYTERANGES'),
-                        'MESSAGE'     => array('RFC822', 'PARTIAL', 'EXTERNAL-BODY', 'NEWS', 'HTTP'),
-                        'APPLICATION' => array('OCTET-STREAM', 'POSTSCRIPT', 'ODA', 'ATOMICMAIL', 'ANDREW-INSET', 'SLATE',
+                                               'BYTERANGES', ],
+                        'MESSAGE' => ['RFC822', 'PARTIAL', 'EXTERNAL-BODY', 'NEWS', 'HTTP'],
+                        'APPLICATION' => ['OCTET-STREAM', 'POSTSCRIPT', 'ODA', 'ATOMICMAIL', 'ANDREW-INSET', 'SLATE',
                                                'WITA', 'DEC-DX', 'DCA-RFT', 'ACTIVEMESSAGE', 'RTF', 'APPLEFILE',
                                                'MAC-BINHEX40', 'NEWS-MESSAGE-ID', 'NEWS-TRANSMISSION', 'WORDPERFECT5.1',
                                                'PDF', 'ZIP', 'MACWRITEII', 'MSWORD', 'REMOTE-PRINTING', 'MATHEMATICA',
@@ -95,104 +101,114 @@ class iCalendar_parameter {
                                                'SET-PAYMENT-INITIATION', 'SET-PAYMENT', 'SET-REGISTRATION-INITIATION',
                                                'SET-REGISTRATION', 'VND.SEEMAIL', 'VND.BUSINESSOBJECTS',
                                                'VND.MERIDIAN-SLINGSHOT', 'VND.XARA', 'SGML-OPEN-CATALOG', 'VND.RAPID',
-                                               'VND.ENLIVEN', 'VND.JAPANNET-REGISTRATION-WAKEUP', 
+                                               'VND.ENLIVEN', 'VND.JAPANNET-REGISTRATION-WAKEUP',
                                                'VND.JAPANNET-VERIFICATION-WAKEUP', 'VND.JAPANNET-PAYMENT-WAKEUP',
-                                               'VND.JAPANNET-DIRECTORY-SERVICE', 'VND.INTERTRUST.DIGIBOX', 'VND.INTERTRUST.NNCP'),
-                        'IMAGE'       => array('JPEG', 'GIF', 'IEF', 'G3FAX', 'TIFF', 'CGM', 'NAPLPS', 'VND.DWG', 'VND.SVF',
-                                               'VND.DXF', 'PNG', 'VND.FPX', 'VND.NET-FPX'),
-                        'AUDIO'       => array('BASIC', '32KADPCM', 'VND.QCELP'),
-                        'VIDEO'       => array('MPEG', 'QUICKTIME', 'VND.VIVO', 'VND.MOTOROLA.VIDEO', 'VND.MOTOROLA.VIDEOP')
-                );
+                                               'VND.JAPANNET-DIRECTORY-SERVICE', 'VND.INTERTRUST.DIGIBOX', 'VND.INTERTRUST.NNCP', ],
+                        'IMAGE' => ['JPEG', 'GIF', 'IEF', 'G3FAX', 'TIFF', 'CGM', 'NAPLPS', 'VND.DWG', 'VND.SVF',
+                                               'VND.DXF', 'PNG', 'VND.FPX', 'VND.NET-FPX', ],
+                        'AUDIO' => ['BASIC', '32KADPCM', 'VND.QCELP'],
+                        'VIDEO' => ['MPEG', 'QUICKTIME', 'VND.VIVO', 'VND.MOTOROLA.VIDEO', 'VND.MOTOROLA.VIDEOP'],
+                ];
                 $value = strtoupper($value);
-                if(rfc2445_is_xname($value)) {
+                if (rfc2445_is_xname($value)) {
                     return true;
                 }
                 @list($type, $subtype) = explode('/', $value);
-                if(empty($type) || empty($subtype)) {
+                if (empty($type) || empty($subtype)) {
                     return false;
                 }
-                if(!isset($fmttypes[$type]) || !in_array($subtype, $fmttypes[$type])) {
+                if (!isset($fmttypes[$type]) || !in_array($subtype, $fmttypes[$type])) {
                     return false;
                 }
+
                 return true;
             break;
 
             case 'LANGUAGE':
                 $value = strtoupper($value);
                 $parts = explode('-', $value);
-                foreach($parts as $part) {
-                    if(empty($part)) {
+                foreach ($parts as $part) {
+                    if (empty($part)) {
                         return false;
                     }
-                    if(strspn($part, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') != strlen($part)) {
+                    if (strspn($part, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') != strlen($part)) {
                         return false;
                     }
                 }
+
                 return true;
             break;
 
             case 'PARTSTAT':
                 $value = strtoupper($value);
-                switch($parent_property->parent_component) {
+                switch ($parent_property->parent_component) {
                     case 'VEVENT':
-                        return ($value == 'NEEDS-ACTION' || $value == 'ACCEPTED' || $value == 'DECLINED' || $value == 'TENTATIVE'
-                                || $value == 'DELEGATED' || rfc2445_is_xname($value));
+                        return $value == 'NEEDS-ACTION' || $value == 'ACCEPTED' || $value == 'DECLINED' || $value == 'TENTATIVE'
+                                || $value == 'DELEGATED' || rfc2445_is_xname($value);
                     break;
                     case 'VTODO':
-                        return ($value == 'NEEDS-ACTION' || $value == 'ACCEPTED' || $value == 'DECLINED' || $value == 'TENTATIVE'
-                                || $value == 'DELEGATED' || $value == 'COMPLETED' || $value == 'IN-PROCESS' || rfc2445_is_xname($value));
+                        return $value == 'NEEDS-ACTION' || $value == 'ACCEPTED' || $value == 'DECLINED' || $value == 'TENTATIVE'
+                                || $value == 'DELEGATED' || $value == 'COMPLETED' || $value == 'IN-PROCESS' || rfc2445_is_xname($value);
                     break;
                     case 'VJOURNAL':
-                        return ($value == 'NEEDS-ACTION' || $value == 'ACCEPTED' || $value == 'DECLINED' || rfc2445_is_xname($value));
+                        return $value == 'NEEDS-ACTION' || $value == 'ACCEPTED' || $value == 'DECLINED' || rfc2445_is_xname($value);
                     break;
                 }
+
                 return false;
             break;
 
             case 'RANGE':
                 $value = strtoupper($value);
-                return ($value == 'THISANDPRIOR' || $value == 'THISANDFUTURE');
+
+                return $value == 'THISANDPRIOR' || $value == 'THISANDFUTURE';
             break;
 
             case 'RELATED':
                 $value = strtoupper($value);
-                return ($value == 'START' || $value == 'END');
+
+                return $value == 'START' || $value == 'END';
             break;
 
             case 'RELTYPE':
                 $value = strtoupper($value);
-                return ($value == 'PARENT' || $value == 'CHILD' || $value == 'SIBLING' || rfc2445_is_xname($value));
+
+                return $value == 'PARENT' || $value == 'CHILD' || $value == 'SIBLING' || rfc2445_is_xname($value);
             break;
 
             case 'ROLE':
                 $value = strtoupper($value);
-                return ($value == 'CHAIR' || $value == 'REQ-PARTICIPANT' || $value == 'OPT-PARTICIPANT' || $value == 'NON-PARTICIPANT' || rfc2445_is_xname($value));
+
+                return $value == 'CHAIR' || $value == 'REQ-PARTICIPANT' || $value == 'OPT-PARTICIPANT' || $value == 'NON-PARTICIPANT' || rfc2445_is_xname($value);
             break;
 
             case 'RSVP':
                 $value = strtoupper($value);
-                return ($value == 'TRUE' || $value == 'FALSE');
+
+                return $value == 'TRUE' || $value == 'FALSE';
             break;
 
             case 'TZID':
-                if(empty($value)) {
+                if (empty($value)) {
                     return false;
                 }
-                return (strcspn($value, '";:,') == strlen($value));
+
+                return strcspn($value, '";:,') == strlen($value);
             break;
 
             case 'VALUE':
                 $value = strtoupper($value);
-                return ($value == 'BINARY'    || $value == 'BOOLEAN'    || $value == 'CAL-ADDRESS' || $value == 'DATE'    ||
-                        $value == 'DATE-TIME' || $value == 'DURATION'   || $value == 'FLOAT'       || $value == 'INTEGER' ||
-                        $value == 'PERIOD'    || $value == 'RECUR'      || $value == 'TEXT'        || $value == 'TIME'    ||
-                        $value == 'URI'       || $value == 'UTC-OFFSET' || rfc2445_is_xname($value));
+
+                return $value == 'BINARY' || $value == 'BOOLEAN' || $value == 'CAL-ADDRESS' || $value == 'DATE' ||
+                        $value == 'DATE-TIME' || $value == 'DURATION' || $value == 'FLOAT' || $value == 'INTEGER' ||
+                        $value == 'PERIOD' || $value == 'RECUR' || $value == 'TEXT' || $value == 'TIME' ||
+                        $value == 'URI' || $value == 'UTC-OFFSET' || rfc2445_is_xname($value);
             break;
         }
     }
 
-    function do_value_formatting($parameter, $value) {
-        switch($parameter) {
+    public function do_value_formatting($parameter, $value) {
+        switch ($parameter) {
             // Parameters of type CAL-ADDRESS or URI MUST be double-quoted
             case 'ALTREP':
             case 'DIR':
@@ -200,13 +216,13 @@ class iCalendar_parameter {
             case 'DELEGATED-TO':
             case 'MEMBER':
             case 'SENT-BY':
-                return '"'.$value.'"';
+                return '"' . $value . '"';
             break;
 
             // Textual parameter types must be double quoted if they contain COLON, SEMICOLON
             // or COMMA. Quoting always sounds easier and standards-conformant though.
             case 'CN':
-                return '"'.$value.'"';
+                return '"' . $value . '"';
             break;
 
             // Parameters with enumerated legal values, just make them all caps
@@ -232,9 +248,6 @@ class iCalendar_parameter {
         }
     }
 
-    function undo_value_formatting($parameter, $value) {
+    public function undo_value_formatting($parameter, $value) {
     }
-
 }
-
-?>
