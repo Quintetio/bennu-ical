@@ -1,5 +1,11 @@
 <?php
 
+require_once 'iCalendar_rfc2445.php';
+require_once 'iCalendar_properties.php';
+require_once 'iCalendar_parameters.php';
+
+// https://github.com/moodle/moodle/blob/master/lib/bennu/
+
 /**
  *  BENNU - PHP iCalendar library
  *  (c) 2005-2006 Ioannis Papaioannou (pj@moodle.org). All rights reserved.
@@ -17,6 +23,7 @@ class iCalendar_component {
     public $components = null;
     public $valid_properties = null;
     public $valid_components = null;
+
     /**
      * Added to hold errors from last run of unserialize.
      *
@@ -38,7 +45,7 @@ class iCalendar_component {
         return $this->name;
     }
 
-    public function add_property($name, $value = null, $parameters = null) {
+    public function add_property($name, $value = null, $parameters = null, $no_formatting = false) {
         // Uppercase first of all
         $name = strtoupper($name);
 
@@ -76,11 +83,10 @@ class iCalendar_component {
 
         // Set parameters before value; this helps with some properties which
         // accept a VALUE parameter, and thus change their default value type.
-
         // The parameters must be valid according to property specifications
         if (!empty($parameters)) {
             foreach ($parameters as $paramname => $paramvalue) {
-                if (!$property->set_parameter($paramname, $paramvalue)) {
+                if (!$property->set_parameter($paramname, $paramvalue, $no_formatting)) {
                     return false;
                 }
             }
@@ -93,7 +99,7 @@ class iCalendar_component {
         }
 
         // $value MUST be valid according to the property data type
-        if (!$property->set_value($value)) {
+        if (!$property->set_value($value, $no_formatting)) {
             return false;
         }
 
@@ -152,6 +158,9 @@ class iCalendar_component {
             foreach ($this->components as $component => $instances) {
                 foreach ($instances as $number => $instance) {
                     if (!$instance->is_valid()) {
+                        echo "error here:";
+                        var_dump($instance);
+
                         return false;
                     }
                 }
@@ -163,8 +172,12 @@ class iCalendar_component {
         foreach ($this->valid_properties as $property => $propdata) {
             if (($propdata & RFC2445_REQUIRED) && empty($this->properties[$property])) {
                 $classname = 'iCalendar_property_' . strtolower(str_replace('-', '_', $property));
+                /* @var $object iCalendar_property */
                 $object = new $classname();
                 if ($object->default_value() === null) {
+                    echo "error here 2:";
+                    var_dump($object);
+
                     return false;
                 }
                 unset($object);
@@ -177,6 +190,8 @@ class iCalendar_component {
     public function serialize() {
         // Check for validity of the object
         if (!$this->is_valid()) {
+            die("iCal is not valid");
+
             return false;
         }
 
@@ -195,6 +210,7 @@ class iCalendar_component {
         if (!empty($this->properties)) {
             foreach ($this->properties as $name => $properties) {
                 foreach ($properties as $property) {
+                    /* @var $property iCalendar_property */
                     $string .= $property->serialize();
                 }
             }
@@ -204,6 +220,7 @@ class iCalendar_component {
         if (!empty($this->components)) {
             foreach ($this->components as $name => $components) {
                 foreach ($components as $component) {
+                    /* @var $component iCalendar_component */
                     $string .= $component->serialize();
                 }
             }
@@ -229,7 +246,7 @@ class iCalendar_component {
      */
     public function unserialize($string) {
         $string = rfc2445_unfold($string); // Unfold any long lines
-        $lines = explode(RFC2445_CRLF, $string); // Create an array of lines
+        $lines = preg_split("<" . RFC2445_CRLF . "|\n|\r>", $string, 0, PREG_SPLIT_NO_EMPTY); // Create an array of lines.
 
         $components = []; // Initialise a stack of components
         $this->clear_errors();
@@ -284,11 +301,13 @@ class iCalendar_component {
                 if ($parent_component == null) {
                     $parent_component = $this; // If there's no components on the stack, use the iCalendar object
                 }
-                if ($parent_component->add_component($component) === false) {
-                    $this->parser_error("Failed to add component on line $key");
+                if ($component !== null) {
+                    if ($parent_component->add_component($component) === false) {
+                        $this->parser_error("Failed to add component on line $key");
+                    }
                 }
                 if ($parent_component != $this) { // If we're not using the iCalendar
-                        array_push($components, $parent_component); // Put the component back on the stack
+                    array_push($components, $parent_component); // Put the component back on the stack
                 }
                 unset($parent_component, $component);
             } else {
@@ -297,7 +316,7 @@ class iCalendar_component {
                     $component = $this; // use the iCalendar
                 }
 
-                if ($component->add_property($label, $data, $params) === false) {
+                if ($component->add_property($label, $data, $params, true) === false) {
                     $this->parser_error("Failed to add property '$label' on line $key");
                 }
 
@@ -323,15 +342,15 @@ class iCalendar extends iCalendar_component {
 
     public function __construct() {
         $this->valid_properties = [
-            'CALSCALE' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'METHOD' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'PRODID' => RFC2445_REQUIRED | RFC2445_ONCE,
-            'VERSION' => RFC2445_REQUIRED | RFC2445_ONCE,
-            RFC2445_XNAME => RFC2445_OPTIONAL,
+                'CALSCALE' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'METHOD' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'PRODID' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'VERSION' => RFC2445_REQUIRED | RFC2445_ONCE,
+                RFC2445_XNAME => RFC2445_OPTIONAL,
         ];
 
         $this->valid_components = [
-            'VEVENT', 'VTODO', 'VJOURNAL', 'VFREEBUSY', 'VTIMEZONE', 'VALARM',
+                'VEVENT', 'VTODO', 'VJOURNAL', 'VFREEBUSY', 'VTIMEZONE', 'VALARM',
         ];
         parent::__construct();
     }
@@ -345,44 +364,44 @@ class iCalendar_event extends iCalendar_component {
         $this->valid_components = ['VALARM'];
 
         $this->valid_properties = [
-            'CLASS' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'CREATED' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DESCRIPTION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'CLASS' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'CREATED' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DESCRIPTION' => RFC2445_OPTIONAL | RFC2445_ONCE,
             // Standard ambiguous here: in 4.6.1 it says that DTSTAMP in optional,
             // while in 4.8.7.2 it says it's REQUIRED. Go with REQUIRED.
-            'DTSTAMP' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'DTSTAMP' => RFC2445_REQUIRED | RFC2445_ONCE,
             // Standard ambiguous here: in 4.6.1 it says that DTSTART in optional,
             // while in 4.8.2.4 it says it's REQUIRED. Go with REQUIRED.
-            'DTSTART' => RFC2445_REQUIRED | RFC2445_ONCE,
-            'GEO' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'LAST-MODIFIED' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'LOCATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'ORGANIZER' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'PRIORITY' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'SEQUENCE' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'STATUS' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'SUMMARY' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'TRANSP' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTSTART' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'GEO' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'LAST-MODIFIED' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'LOCATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'ORGANIZER' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'PRIORITY' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'SEQUENCE' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'STATUS' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'SUMMARY' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'TRANSP' => RFC2445_OPTIONAL | RFC2445_ONCE,
             // Standard ambiguous here: in 4.6.1 it says that UID in optional,
             // while in 4.8.4.7 it says it's REQUIRED. Go with REQUIRED.
-            'UID' => RFC2445_REQUIRED | RFC2445_ONCE,
-            'URL' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'RECURRENCE-ID' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DTEND' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DURATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'ATTACH' => RFC2445_OPTIONAL,
-            'ATTENDEE' => RFC2445_OPTIONAL,
-            'CATEGORIES' => RFC2445_OPTIONAL,
-            'COMMENT' => RFC2445_OPTIONAL,
-            'CONTACT' => RFC2445_OPTIONAL,
-            'EXDATE' => RFC2445_OPTIONAL,
-            'EXRULE' => RFC2445_OPTIONAL,
-            'REQUEST-STATUS' => RFC2445_OPTIONAL,
-            'RELATED-TO' => RFC2445_OPTIONAL,
-            'RESOURCES' => RFC2445_OPTIONAL,
-            'RDATE' => RFC2445_OPTIONAL,
-            'RRULE' => RFC2445_OPTIONAL,
-            RFC2445_XNAME => RFC2445_OPTIONAL,
+                'UID' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'URL' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'RECURRENCE-ID' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTEND' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DURATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'ATTACH' => RFC2445_OPTIONAL,
+                'ATTENDEE' => RFC2445_OPTIONAL,
+                'CATEGORIES' => RFC2445_OPTIONAL,
+                'COMMENT' => RFC2445_OPTIONAL,
+                'CONTACT' => RFC2445_OPTIONAL,
+                'EXDATE' => RFC2445_OPTIONAL,
+                'EXRULE' => RFC2445_OPTIONAL,
+                'REQUEST-STATUS' => RFC2445_OPTIONAL,
+                'RELATED-TO' => RFC2445_OPTIONAL,
+                'RESOURCES' => RFC2445_OPTIONAL,
+                'RDATE' => RFC2445_OPTIONAL,
+                'RRULE' => RFC2445_OPTIONAL,
+                RFC2445_XNAME => RFC2445_OPTIONAL,
         ];
 
         parent::__construct();
@@ -420,39 +439,39 @@ class iCalendar_todo extends iCalendar_component {
         $this->valid_components = ['VALARM'];
 
         $this->valid_properties = [
-            'CLASS' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'COMPLETED' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'CREATED' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DESCRIPTION' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DTSTAMP' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DTSTAP' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'GEO' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'LAST-MODIFIED' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'LOCATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'ORGANIZER' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'PERCENT' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'PRIORITY' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'RECURID' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'SEQUENCE' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'STATUS' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'SUMMARY' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'UID' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'URL' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DUE' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DURATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'ATTACH' => RFC2445_OPTIONAL,
-            'ATTENDEE' => RFC2445_OPTIONAL,
-            'CATEGORIES' => RFC2445_OPTIONAL,
-            'COMMENT' => RFC2445_OPTIONAL,
-            'CONTACT' => RFC2445_OPTIONAL,
-            'EXDATE' => RFC2445_OPTIONAL,
-            'EXRULE' => RFC2445_OPTIONAL,
-            'RSTATUS' => RFC2445_OPTIONAL,
-            'RELATED' => RFC2445_OPTIONAL,
-            'RESOURCES' => RFC2445_OPTIONAL,
-            'RDATE' => RFC2445_OPTIONAL,
-            'RRULE' => RFC2445_OPTIONAL,
-            RFC2445_XNAME => RFC2445_OPTIONAL,
+                'CLASS' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'COMPLETED' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'CREATED' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DESCRIPTION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTSTAMP' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTSTAP' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'GEO' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'LAST-MODIFIED' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'LOCATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'ORGANIZER' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'PERCENT' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'PRIORITY' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'RECURID' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'SEQUENCE' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'STATUS' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'SUMMARY' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'UID' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'URL' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DUE' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DURATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'ATTACH' => RFC2445_OPTIONAL,
+                'ATTENDEE' => RFC2445_OPTIONAL,
+                'CATEGORIES' => RFC2445_OPTIONAL,
+                'COMMENT' => RFC2445_OPTIONAL,
+                'CONTACT' => RFC2445_OPTIONAL,
+                'EXDATE' => RFC2445_OPTIONAL,
+                'EXRULE' => RFC2445_OPTIONAL,
+                'RSTATUS' => RFC2445_OPTIONAL,
+                'RELATED' => RFC2445_OPTIONAL,
+                'RESOURCES' => RFC2445_OPTIONAL,
+                'RDATE' => RFC2445_OPTIONAL,
+                'RRULE' => RFC2445_OPTIONAL,
+                RFC2445_XNAME => RFC2445_OPTIONAL,
         ];
 
         parent::__construct();
@@ -494,30 +513,30 @@ class iCalendar_journal extends iCalendar_component {
 
     public function __construct() {
         $this->valid_properties = [
-            'CLASS' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'CREATED' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DESCRIPTION' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DTSTART' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DTSTAMP' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'LAST-MODIFIED' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'ORGANIZER' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'RECURRANCE-ID' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'SEQUENCE' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'STATUS' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'SUMMARY' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'UID' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'URL' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'ATTACH' => RFC2445_OPTIONAL,
-            'ATTENDEE' => RFC2445_OPTIONAL,
-            'CATEGORIES' => RFC2445_OPTIONAL,
-            'COMMENT' => RFC2445_OPTIONAL,
-            'CONTACT' => RFC2445_OPTIONAL,
-            'EXDATE' => RFC2445_OPTIONAL,
-            'EXRULE' => RFC2445_OPTIONAL,
-            'RELATED-TO' => RFC2445_OPTIONAL,
-            'RDATE' => RFC2445_OPTIONAL,
-            'RRULE' => RFC2445_OPTIONAL,
-            RFC2445_XNAME => RFC2445_OPTIONAL,
+                'CLASS' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'CREATED' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DESCRIPTION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTSTART' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTSTAMP' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'LAST-MODIFIED' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'ORGANIZER' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'RECURRANCE-ID' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'SEQUENCE' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'STATUS' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'SUMMARY' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'UID' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'URL' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'ATTACH' => RFC2445_OPTIONAL,
+                'ATTENDEE' => RFC2445_OPTIONAL,
+                'CATEGORIES' => RFC2445_OPTIONAL,
+                'COMMENT' => RFC2445_OPTIONAL,
+                'CONTACT' => RFC2445_OPTIONAL,
+                'EXDATE' => RFC2445_OPTIONAL,
+                'EXRULE' => RFC2445_OPTIONAL,
+                'RELATED-TO' => RFC2445_OPTIONAL,
+                'RDATE' => RFC2445_OPTIONAL,
+                'RRULE' => RFC2445_OPTIONAL,
+                RFC2445_XNAME => RFC2445_OPTIONAL,
         ];
 
         parent::__construct();
@@ -531,20 +550,20 @@ class iCalendar_freebusy extends iCalendar_component {
     public function __construct() {
         $this->valid_components = [];
         $this->valid_properties = [
-            'CONTACT' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DTSTART' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DTEND' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DURATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'DTSTAMP' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'ORGANIZER' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'UID' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'URL' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'CONTACT' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTSTART' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTEND' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DURATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DTSTAMP' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'ORGANIZER' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'UID' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'URL' => RFC2445_OPTIONAL | RFC2445_ONCE,
             // TODO: the next two are components of their own!
-            'ATTENDEE' => RFC2445_OPTIONAL,
-            'COMMENT' => RFC2445_OPTIONAL,
-            'FREEBUSY' => RFC2445_OPTIONAL,
-            'RSTATUS' => RFC2445_OPTIONAL,
-            RFC2445_XNAME => RFC2445_OPTIONAL,
+                'ATTENDEE' => RFC2445_OPTIONAL,
+                'COMMENT' => RFC2445_OPTIONAL,
+                'FREEBUSY' => RFC2445_OPTIONAL,
+                'RSTATUS' => RFC2445_OPTIONAL,
+                RFC2445_XNAME => RFC2445_OPTIONAL,
         ];
 
         parent::__construct();
@@ -581,19 +600,19 @@ class iCalendar_alarm extends iCalendar_component {
     public function __construct() {
         $this->valid_components = [];
         $this->valid_properties = [
-            'ACTION' => RFC2445_REQUIRED | RFC2445_ONCE,
-            'TRIGGER' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'ACTION' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'TRIGGER' => RFC2445_REQUIRED | RFC2445_ONCE,
             // If one of these 2 occurs, so must the other.
-            'DURATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'REPEAT' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DURATION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'REPEAT' => RFC2445_OPTIONAL | RFC2445_ONCE,
             // The following is required if action == "PROCEDURE" | "AUDIO"
-            'ATTACH' => RFC2445_OPTIONAL,
+                'ATTACH' => RFC2445_OPTIONAL,
             // The following is required if trigger == "EMAIL" | "DISPLAY"
-            'DESCRIPTION' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'DESCRIPTION' => RFC2445_OPTIONAL | RFC2445_ONCE,
             // The following are required if action == "EMAIL"
-            'SUMMARY' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'ATTENDEE' => RFC2445_OPTIONAL,
-            RFC2445_XNAME => RFC2445_OPTIONAL,
+                'SUMMARY' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'ATTENDEE' => RFC2445_OPTIONAL,
+                RFC2445_XNAME => RFC2445_OPTIONAL,
         ];
 
         parent::__construct();
@@ -638,10 +657,10 @@ class iCalendar_timezone extends iCalendar_component {
         $this->valid_components = ['STANDARD', 'DAYLIGHT'];
 
         $this->valid_properties = [
-            'TZID' => RFC2445_REQUIRED | RFC2445_ONCE,
-            'LAST-MODIFIED' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            'TZURL' => RFC2445_OPTIONAL | RFC2445_ONCE,
-            RFC2445_XNAME => RFC2445_OPTIONAL,
+                'TZID' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'LAST-MODIFIED' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                'TZURL' => RFC2445_OPTIONAL | RFC2445_ONCE,
+                RFC2445_XNAME => RFC2445_OPTIONAL,
         ];
 
         parent::__construct();
@@ -655,14 +674,14 @@ class iCalendar_standard extends iCalendar_component {
     public function __construct() {
         $this->valid_components = [];
         $this->valid_properties = [
-            'DTSTART' => RFC2445_REQUIRED | RFC2445_ONCE,
-            'TZOFFSETTO' => RFC2445_REQUIRED | RFC2445_ONCE,
-            'TZOFFSETFROM' => RFC2445_REQUIRED | RFC2445_ONCE,
-            'COMMENT' => RFC2445_OPTIONAL,
-            'RDATE' => RFC2445_OPTIONAL,
-            'RRULE' => RFC2445_OPTIONAL,
-            'TZNAME' => RFC2445_OPTIONAL,
-            RFC2445_XNAME => RFC2445_OPTIONAL,
+                'DTSTART' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'TZOFFSETTO' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'TZOFFSETFROM' => RFC2445_REQUIRED | RFC2445_ONCE,
+                'COMMENT' => RFC2445_OPTIONAL,
+                'RDATE' => RFC2445_OPTIONAL,
+                'RRULE' => RFC2445_OPTIONAL,
+                'TZNAME' => RFC2445_OPTIONAL,
+                RFC2445_XNAME => RFC2445_OPTIONAL,
         ];
         parent::__construct();
     }

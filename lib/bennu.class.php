@@ -17,7 +17,7 @@
  * @license http://www.gnu.org/copyleft/lesser.html GNU Lesser General Public License
  */
 class Bennu {
-    public function timestamp_to_datetime($t = null) {
+    public static function timestamp_to_datetime($t = null) {
         if ($t === null) {
             $t = time();
         }
@@ -25,7 +25,15 @@ class Bennu {
         return gmstrftime('%Y%m%dT%H%M%SZ', $t);
     }
 
-    public function generate_guid() {
+    public static function timestamp_to_date($t = null) {
+        if ($t === null) {
+            $t = time();
+        }
+
+        return gmstrftime('%Y%m%d', $t);
+    }
+
+    public static function generate_guid() {
         // Implemented as per the Network Working Group draft on UUIDs and GUIDs
 
         // These two octets get special treatment

@@ -1,6 +1,8 @@
 <?php
 
-// $Id: iCalendar_parameters.php,v 1.8 2006/01/13 14:10:43 defacer Exp $
+require_once 'iCalendar_rfc2445.php';
+require_once 'iCalendar_components.php';
+require_once 'iCalendar_properties.php';
 
 /**
  *  BENNU - PHP iCalendar library
@@ -12,12 +14,12 @@
  *
  * @author Ioannis Papaioannou
  *
- * @version $Id: iCalendar_parameters.php,v 1.8 2006/01/13 14:10:43 defacer Exp $
+ * @version $Id$
  *
  * @license http://www.gnu.org/copyleft/lesser.html GNU Lesser General Public License
  */
 class iCalendar_parameter {
-    public function multiple_values_allowed($parameter) {
+    public static function multiple_values_allowed($parameter) {
         switch ($parameter) {
             case 'DELEGATED-FROM':
             case 'DELEGATED-TO':
@@ -28,7 +30,7 @@ class iCalendar_parameter {
         }
     }
 
-    public function default_value($parameter) {
+    public static function default_value($parameter) {
         switch ($parameter) {
             case 'CUTYPE':   return 'INDIVIDUAL';
             case 'FBTYPE':   return 'BUSY';
@@ -41,7 +43,7 @@ class iCalendar_parameter {
         }
     }
 
-    public function is_valid_value(&$parent_property, $parameter, $value) {
+    public static function is_valid_value(&$parent_property, $parameter, $value) {
         switch ($parameter) {
             // These must all be a URI
             case 'ALTREP':
@@ -57,9 +59,9 @@ class iCalendar_parameter {
                 return rfc2445_is_valid_value($value, RFC2445_TYPE_CAL_ADDRESS);
             break;
 
-            // RFC-2445: CN value may contain quotes.
+            // RFC-2445: can contain quotes.
             case 'CN':
-                return rfc2445_is_valid_value($value, RFC2445_TYPE_TEXT);
+                return true;
             break;
 
             // These have enumerated legal values
@@ -110,9 +112,7 @@ class iCalendar_parameter {
                         'VIDEO' => ['MPEG', 'QUICKTIME', 'VND.VIVO', 'VND.MOTOROLA.VIDEO', 'VND.MOTOROLA.VIDEOP'],
                 ];
                 $value = strtoupper($value);
-                if (rfc2445_is_xname($value)) {
-                    return true;
-                }
+                // Mimetype is enumerated above and anything else results in false.
                 @list($type, $subtype) = explode('/', $value);
                 if (empty($type) || empty($subtype)) {
                     return false;
@@ -193,7 +193,7 @@ class iCalendar_parameter {
                     return false;
                 }
 
-                return strcspn($value, '";:,') == strlen($value);
+                return strcspn($value, ';:,') == strlen($value);
             break;
 
             case 'VALUE':
@@ -207,7 +207,7 @@ class iCalendar_parameter {
         }
     }
 
-    public function do_value_formatting($parameter, $value) {
+    public static function do_value_formatting($parameter, $value) {
         switch ($parameter) {
             // Parameters of type CAL-ADDRESS or URI MUST be double-quoted
             case 'ALTREP':
@@ -243,11 +243,11 @@ class iCalendar_parameter {
 
             // Parameters we shouldn't be messing with
             case 'TZID':
-                return $value;
+                return str_replace('"', '', $value);
             break;
         }
     }
 
-    public function undo_value_formatting($parameter, $value) {
+    public static function undo_value_formatting($parameter, $value) {
     }
 }

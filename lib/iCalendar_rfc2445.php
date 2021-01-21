@@ -1,6 +1,10 @@
 <?php
 
-// $Id$
+define('_BENNU_VERSION', '0.1');
+
+require_once 'iCalendar_components.php';
+require_once 'iCalendar_properties.php';
+require_once 'iCalendar_parameters.php';
 
 /*
  *  BENNU - PHP iCalendar library
@@ -25,9 +29,9 @@
 */
 
 define('RFC2445_CRLF', "\r\n");
-define('RFC2445_WSP', "\t ");
+define('RFC2445_WSP', "\t");
 define('RFC2445_WEEKDAYS', 'MO,TU,WE,TH,FR,SA,SU');
-define('RFC2445_FOLDED_LINE_LENGTH', 75);
+define('RFC2445_FOLDED_LINE_LENGTH', 74);
 
 define('RFC2445_PARAMETER_SEPARATOR', ';');
 define('RFC2445_VALUE_SEPARATOR', ':');
@@ -58,6 +62,7 @@ define('RFC2445_TYPE_URI', 12); // CAL_ADDRESS === URI
 define('RFC2445_TYPE_UTC_OFFSET', 13);
 
 function rfc2445_fold($string) {
+    // if(strlen(utf8_decode($string)) <= RFC2445_FOLDED_LINE_LENGTH) {
     if (mb_strlen($string, 'utf-8') <= RFC2445_FOLDED_LINE_LENGTH) {
         return $string;
     }
@@ -68,6 +73,7 @@ function rfc2445_fold($string) {
     $len_count = 0;
 
     //multi-byte string, get the correct length
+    // $section_len = strlen(utf8_decode($string));
     $section_len = mb_strlen($string, 'utf-8');
 
     while ($len_count < $section_len) {
@@ -78,15 +84,66 @@ function rfc2445_fold($string) {
         $len_count += mb_strlen($section, 'utf-8');
 
         /* Add the portion to the return value, terminating with CRLF.HTAB
-           As per RFC 2445, CRLF.HTAB will be replaced by the processor of the
-           data */
+          As per RFC 2445, CRLF.HTAB will be replaced by the processor of the
+          data */
         $retval .= $section . RFC2445_CRLF . RFC2445_WSP;
 
         $i++;
     }
 
+    /* while($len_count<$section_len) {
+
+      //get the current portion of the line
+      $section = core_text::substr($string, ($i * RFC2445_FOLDED_LINE_LENGTH), (RFC2445_FOLDED_LINE_LENGTH), 'utf-8');
+
+      //increment the length we've processed by the length of the new portion
+      $len_count += strlen(utf8_decode($section));
+
+      // Add the portion to the return value, terminating with CRLF.HTAB
+      // As per RFC 2445, CRLF.HTAB will be replaced by the processor of the
+      // data
+      $retval .= $section.RFC2445_CRLF.RFC2445_WSP;
+
+      $i++;
+      } */
+
     return $retval;
 }
+
+/**
+ * Function to fold (wrap) lines at the RFC2445 specified line length of 75.
+ * (c) 2005-2006 Ioannis Papaioannou (pj@moodle.org)
+ * Released under the LGPL.
+ * See http://bennu.sourceforge.net/ for more information and downloads.
+ *
+ * @return    string the properly folded value
+ *
+ * @author Ioannis Papaioannou, edited by Ralf Jahr (white space at end of line)
+ */
+/* function rfc2445_fold($string) {
+    if(strlen($string) <= 75) {
+        return $string;
+    }
+    $retval = '';
+    while(strlen($string) > 75) {
+        $next_line = substr($string, 0, 75 - 1) . "\r\n" . ' ';
+        $string  = substr($string, 75 - 1);
+
+        $right_side_whitespace = strlen($next_line) - strlen(rtrim($next_line));
+        if($right_side_whitespace > -1) {
+            // $string = $right_side_whitespace . $string;
+        }
+
+        for($i = 3; $i < $right_side_whitespace; $i++) {
+            $string = " " . $string;
+        }
+
+        $retval .= $next_line;
+    }
+    $retval .= $string;
+
+    return $retval;
+} */
 
 function rfc2445_unfold($string) {
     for ($i = 0; $i < strlen(RFC2445_WSP); ++$i) {
@@ -145,7 +202,7 @@ function rfc2445_is_valid_value($value, $type) {
             }
 
             return preg_match($regexp, $remain);
-        break;
+            break;
 
         case RFC2445_TYPE_BINARY:
             if (!is_string($value)) {
@@ -170,7 +227,7 @@ function rfc2445_is_valid_value($value, $type) {
             }
 
             return true;
-        break;
+            break;
 
         case RFC2445_TYPE_BOOLEAN:
             if (is_bool($value)) {
@@ -183,7 +240,7 @@ function rfc2445_is_valid_value($value, $type) {
             }
 
             return false;
-        break;
+            break;
 
         case RFC2445_TYPE_DATE:
             if (is_int($value)) {
@@ -204,7 +261,7 @@ function rfc2445_is_valid_value($value, $type) {
             $d = intval(substr($value, 6, 2));
 
             return checkdate($m, $d, $y);
-        break;
+            break;
 
         case RFC2445_TYPE_DATE_TIME:
             if (!is_string($value) || strlen($value) < 15) {
@@ -212,9 +269,9 @@ function rfc2445_is_valid_value($value, $type) {
             }
 
             return $value[8] == 'T' &&
-                   rfc2445_is_valid_value(substr($value, 0, 8), RFC2445_TYPE_DATE) &&
-                   rfc2445_is_valid_value(substr($value, 9), RFC2445_TYPE_TIME);
-        break;
+                    rfc2445_is_valid_value(substr($value, 0, 8), RFC2445_TYPE_DATE) &&
+                    rfc2445_is_valid_value(substr($value, 9), RFC2445_TYPE_TIME);
+            break;
 
         case RFC2445_TYPE_DURATION:
             if (!is_string($value)) {
@@ -261,29 +318,29 @@ function rfc2445_is_valid_value($value, $type) {
                     case 'W':
                         // If duration in weeks is specified, this must end the string
                         return $i == $len - 1;
-                    break;
+                        break;
 
                     case 'D':
                         // Days specified, now if anything comes after it must be a 'T'
                         $allowed = 'T';
-                    break;
+                        break;
 
                     case 'T':
                         // Starting to specify time, H M S are now valid delimiters
                         $allowed = 'HMS';
-                    break;
+                        break;
 
                     case 'H':
                         $allowed = 'M';
-                    break;
+                        break;
 
                     case 'M':
                         $allowed = 'S';
-                    break;
+                        break;
 
                     case 'S':
                         return $i == $len - 1;
-                    break;
+                        break;
                 }
 
                 // If we 're going to continue, reset $num
@@ -294,7 +351,7 @@ function rfc2445_is_valid_value($value, $type) {
             // therefore $num must be empty for the period to be legal
             return $num === '' && $ch != 'T';
 
-        break;
+            break;
 
         case RFC2445_TYPE_FLOAT:
             if (is_float($value)) {
@@ -309,12 +366,13 @@ function rfc2445_is_valid_value($value, $type) {
             $len = strlen($value);
             for ($i = 0; $i < $len; ++$i) {
                 switch ($value[$i]) {
-                    case '-': case '+':
+                    case '-':
+                    case '+':
                         // A sign can only be seen at position 0 and cannot be the only char
                         if ($i != 0 || $len == 1) {
                             return false;
                         }
-                    break;
+                        break;
                     case '.':
                         // A second dot is an error
                         // Make sure we had at least one int before the dot
@@ -326,20 +384,28 @@ function rfc2445_is_valid_value($value, $type) {
                         if ($i == $len - 1) {
                             return false;
                         }
-                    break;
-                    case '0': case '1': case '2': case '3': case '4':
-                    case '5': case '6': case '7': case '8': case '9':
+                        break;
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
                         $int = true;
-                    break;
+                        break;
                     default:
                         // Any other char is a no-no
                         return false;
-                    break;
+                        break;
                 }
             }
 
             return true;
-        break;
+            break;
 
         case RFC2445_TYPE_INTEGER:
             if (is_int($value)) {
@@ -361,7 +427,7 @@ function rfc2445_is_valid_value($value, $type) {
             }
 
             return $value >= -2147483648 && $value <= 2147483647;
-        break;
+            break;
 
         case RFC2445_TYPE_PERIOD:
             if (!is_string($value) || empty($value)) {
@@ -388,7 +454,7 @@ function rfc2445_is_valid_value($value, $type) {
 
             // It seems to be illegal
             return false;
-        break;
+            break;
 
         case RFC2445_TYPE_RECUR:
             if (!is_string($value)) {
@@ -397,8 +463,8 @@ function rfc2445_is_valid_value($value, $type) {
 
             $parts = explode(';', strtoupper($value));
 
-            // First of all, we need at least a FREQ and a UNTIL or COUNT part, so...
-            if (count($parts) < 2) {
+            // We need at least one part for a valid rule, for example: "FREQ=DAILY".
+            if (empty($parts)) {
                 return false;
             }
 
@@ -453,8 +519,8 @@ function rfc2445_is_valid_value($value, $type) {
             // has some elements, they are illegal.
 
             if ($vars['FREQ'] != 'SECONDLY' && $vars['FREQ'] != 'MINUTELY' && $vars['FREQ'] != 'HOURLY' &&
-               $vars['FREQ'] != 'DAILY' && $vars['FREQ'] != 'WEEKLY' &&
-               $vars['FREQ'] != 'MONTHLY' && $vars['FREQ'] != 'YEARLY') {
+                    $vars['FREQ'] != 'DAILY' && $vars['FREQ'] != 'WEEKLY' &&
+                    $vars['FREQ'] != 'MONTHLY' && $vars['FREQ'] != 'YEARLY') {
                 return false;
             }
             unset($vars['FREQ']);
@@ -680,11 +746,11 @@ function rfc2445_is_valid_value($value, $type) {
             // At last, all is OK!
             return true;
 
-        break;
+            break;
 
         case RFC2445_TYPE_TEXT:
             return true;
-        break;
+            break;
 
         case RFC2445_TYPE_TIME:
             if (is_int($value)) {
@@ -711,7 +777,7 @@ function rfc2445_is_valid_value($value, $type) {
             $s = intval(substr($value, 4, 2));
 
             return $h <= 23 && $m <= 59 && $s <= 60;
-        break;
+            break;
 
         case RFC2445_TYPE_UTC_OFFSET:
             if (is_int($value)) {
@@ -741,7 +807,7 @@ function rfc2445_is_valid_value($value, $type) {
             $m = intval(substr($value, 3, 2));
 
             return $h <= 23 && $m <= 59 && $s <= 59;
-        break;
+            break;
     }
 
     // TODO: remove this assertion
@@ -758,11 +824,11 @@ function rfc2445_do_value_formatting($value, $type) {
         case RFC2445_TYPE_URI:
             // Enclose in double quotes
             $value = '"' . $value . '"';
-        break;
+            break;
         case RFC2445_TYPE_TEXT:
             // Escape entities
             $value = strtr($value, ["\r\n" => '\\n', "\n" => '\\n', '\\' => '\\\\', ',' => '\\,', ';' => '\\;']);
-        break;
+            break;
     }
 
     return $value;
@@ -774,12 +840,48 @@ function rfc2445_undo_value_formatting($value, $type) {
         case RFC2445_TYPE_URI:
             // Trim beginning and end double quote
             $value = substr($value, 1, strlen($value) - 2);
-        break;
+            break;
         case RFC2445_TYPE_TEXT:
             // Unescape entities
             $value = strtr($value, ['\\n' => "\n", '\\N' => "\n", '\\\\' => '\\', '\\,' => ',', '\\;' => ';']);
-        break;
+            break;
     }
 
     return $value;
+}
+
+// This is cheating: GUIDs have nothing to do with RFC 2445
+
+function rfc2445_guid() {
+    // Implemented as per the Network Working Group draft on UUIDs and GUIDs
+
+    // These two octets get special treatment
+    $time_hi_and_version = sprintf('%02x', (1 << 6) + mt_rand(0, 15)); // 0100 plus 4 random bits
+    $clock_seq_hi_and_reserved = sprintf('%02x', (1 << 7) + mt_rand(0, 63)); // 10 plus 6 random bits
+
+    // Need another 14 random octects
+    $pool = '';
+    for ($i = 0; $i < 7; ++$i) {
+        $pool .= sprintf('%04x', mt_rand(0, 65535));
+    }
+
+    // time_low = 4 octets
+    $random = substr($pool, 0, 8) . '-';
+
+    // time_mid = 2 octets
+    $random .= substr($pool, 8, 4) . '-';
+
+    // time_high_and_version = 2 octets
+    $random .= $time_hi_and_version . substr($pool, 12, 2) . '-';
+
+    // clock_seq_high_and_reserved = 1 octet
+    $random .= $clock_seq_hi_and_reserved;
+
+    // clock_seq_low = 1 octet
+    $random .= substr($pool, 13, 2) . '-';
+
+    // node = 6 octets
+    $random .= substr($pool, 14, 12);
+
+    return $random;
 }
