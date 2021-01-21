@@ -1,0 +1,16 @@
+{
+    "name": "quintetio/bennu-ical",
+    "description": "Fork of moodle/bennu ical libary",
+    "type": "library",
+    "license": "LGPL",
+    "authors": [
+        {
+            "name": "Ralf Jahr",
+            "email": "jahr@quintet.io"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "classmap": ["lib/"]
+    }
+}
