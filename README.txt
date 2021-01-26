@@ -1,3 +1,27 @@
+This is a clone from the original repository, see below. Changes have
+been made for more recent PHP versions (7.4) and the package is now
+installable with composer (has not been submitted to packagist):
+
+Add to your composer.json:
+
+"require": {
+    "quintetio/bennu-ical": "dev-main",
+  },
+"repositories": [
+	{
+	  "type": "git",
+	  "url": "https://github.com/Quintetio/bennu-ical.git"
+	}
+  ],
+
+Then install:
+
+php -d memory_limit=-1 composer.phar require quintetio/bennu-ical:dev-main
+
+
+=======================================================================
+
+
 Bennu - An object-oriented iCalendar (RFC2445) implementation in PHP
 http://bennu.sourceforge.net
 
